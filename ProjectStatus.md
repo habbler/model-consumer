@@ -12,6 +12,8 @@
   - Add domain error types to anchor validation pathways. **Status:** consolidated in `Core.Error` and consumed by core types.
   - Prototype need evolution helpers. **Status:** `Core.Dynamics` offers time/spend/rebound transitions with tests.
   - Introduce world scaffolding. **Status:** `Core.World` builds validated world states (prices, wage, env).
+  - Prototype agent step. **Status:** `Core.Agent.stepAgent` updates needs/money with tests.
+  - Introduce basic world stepping. **Status:** `Core.Simulation.stepWorld` batches agent updates.
 
 ## Recent Milestones
 - Formalized design scope and architecture in the updated specification.

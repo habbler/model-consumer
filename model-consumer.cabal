@@ -59,10 +59,12 @@ library
     import:           warnings
 
     exposed-modules:
+        Core.Agent,
         Core.Config,
         Core.Dynamics,
         Core.Error,
         Core.Matrix,
+        Core.Simulation,
         Core.Tensor,
         Core.Types,
         Core.World

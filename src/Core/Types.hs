@@ -1,4 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 -- | Note [Core types]
@@ -18,6 +19,8 @@ module Core.Types
   , TimeAlloc(..)
   , AgentParams(..)
   , Agent(..)
+  , SpendPlan(..)
+  , Decision(..)
   , needVec
   , spendVec
   , priceVec
@@ -26,6 +29,8 @@ module Core.Types
   , validTimeAlloc
   , spendTotal
   , moneyNext
+  , validateDecision
+  , zeroSpendPlan
   , needVecMap
   , needVecZipWith
   , needVecToList
@@ -35,6 +40,7 @@ module Core.Types
   , module Core.Error
   ) where
 
+import Core.Config qualified as Config
 import Core.Error (DomainError(..))
 import Core.Tensor (Tensor)
 import qualified Core.Tensor as Tensor
@@ -82,6 +88,17 @@ data Agent = Agent
   , needs   :: !NeedVec
   , money   :: !Money
   , params  :: !AgentParams
+  }
+  deriving stock (Eq, Show)
+
+data SpendPlan = SpendPlan
+  { goodsSpend :: !SpendVec
+  }
+  deriving stock (Eq, Show)
+
+data Decision = Decision
+  { timeAllocation :: !TimeAlloc
+  , spendPlan      :: !SpendPlan
   }
   deriving stock (Eq, Show)
 
@@ -162,6 +179,25 @@ moneyNext
 moneyNext wage prices balance alloc spends = do
   totalSpend <- spendTotal prices spends
   pure (balance + wage * laborHours alloc - totalSpend)
+
+validateDecision :: AgentParams -> Decision -> Either DomainError Decision
+validateDecision AgentParams{timeBudget} decision@Decision{timeAllocation}
+  | Tensor.length (entertainment timeAllocation) /= Config.entDimension =
+      Left (DimensionMismatch "entertainment" Config.entDimension (Tensor.length (entertainment timeAllocation)))
+  | spendVectorLen /= Config.needsDimension =
+      Left (DimensionMismatch "spend plan" Config.needsDimension spendVectorLen)
+  | otherwise = do
+      _ <- validTimeAlloc timeBudget timeAllocation
+      pure decision
+  where
+    spendVectorLen = Tensor.length (unSpendVec (goodsSpend (spendPlan decision)))
+
+zeroSpendPlan :: Int -> Either DomainError SpendPlan
+zeroSpendPlan n
+  | n <= 0 = Left (DimensionMismatch "SpendPlan" n n)
+  | otherwise = do
+      let zeros = SpendVec (Tensor.replicate n 0)
+      pure SpendPlan { goodsSpend = zeros }
 
 needVecMap :: (Float -> Float) -> NeedVec -> NeedVec
 needVecMap f (NeedVec t) = NeedVec (Tensor.map f t)

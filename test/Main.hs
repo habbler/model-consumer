@@ -4,9 +4,11 @@
 module Main (main) where
 
 import Core.Tensor qualified as Tensor
+import Core.Agent qualified as Agent
 import Core.Config qualified as Config
 import Core.Dynamics qualified as Dynamics
 import Core.Matrix qualified as Matrix
+import Core.Simulation qualified as Simulation
 import Core.World qualified as World
 import Core.Types
 import System.Exit (exitFailure)
@@ -27,6 +29,8 @@ tests =
   , validateDefaultEnv
   , validateEvolveNeeds
   , validateWorldBuilder
+  , validateStepAgent
+  , validateStepWorld
   , validateTimeBudget
   , validateMoneyNext
   , expectLeft "moneyNext dimension mismatch" moneyMismatch
@@ -147,8 +151,74 @@ validateWorldBuilder =
     (Right env, Right prices) ->
       case World.mkWorld env prices 12 of
         Right world ->
-          if World.goodsCount world == Config.needsDimension
+         if World.goodsCount world == Config.needsDimension
              then report True "mkWorld accepts matching prices"
              else report False "goodsCount mismatch"
         Left err -> report False ("mkWorld failed " <> show err)
     _ -> report False "mkWorld setup failed"
+
+validateStepAgent :: IO Bool
+validateStepAgent =
+  let ent = Tensor.fromList (replicate Config.entDimension 0)
+  in case ( Config.defaultEnv
+          , priceVec (replicate Config.needsDimension 1)
+          , needVec (replicate Config.needsDimension 1)
+          , needVec (replicate Config.needsDimension 1)
+          , zeroSpendPlan Config.needsDimension
+          , timeAlloc ent 1 0 0 0
+          ) of
+       (Right env, Right prices, Right needs0, Right weights, Right baseSpend, Right alloc) -> do
+         let params0 = AgentParams { setPoint = needs0
+                                   , needWeight = weights
+                                   , discount = 0.9
+                                   , hedonicW = 0.1
+                                   , gapPenalty = 0.1
+                                   , timeBudget = 5
+                                   }
+             agent0 = Agent { agentId = 1, needs = needs0, money = 10, params = params0 }
+         case ( World.mkWorld env prices 1
+              , spendVec (replicate Config.needsDimension 0.1)
+              ) of
+           (Right world, Right spendVec0) ->
+             let decision = Decision { timeAllocation = alloc, spendPlan = baseSpend { goodsSpend = spendVec0 } }
+                 expectedMoney = 10 + laborHours alloc * 1 - sum (spendVecToList spendVec0)
+             in case Agent.stepAgent world agent0 decision of
+                  Right outcome ->
+                    if abs (money (Agent.updatedAgent outcome) - expectedMoney) < 1e-6
+                       then report True "stepAgent updates agent"
+                       else report False "stepAgent money mismatch"
+                  Left err -> report False ("stepAgent failed " <> show err)
+           _ -> report False "World or spend setup failed"
+       _ -> report False "stepAgent preconditions failed"
+
+validateStepWorld :: IO Bool
+validateStepWorld =
+  let ent = Tensor.fromList (replicate Config.entDimension 0)
+  in case ( Config.defaultEnv
+          , priceVec (replicate Config.needsDimension 1)
+          , needVec (replicate Config.needsDimension 1)
+          , zeroSpendPlan Config.needsDimension
+          , timeAlloc ent 1 0 0 0
+          ) of
+       (Right env, Right prices, Right needs0, Right baseSpend, Right alloc) -> do
+         let params0 = AgentParams { setPoint = needs0
+                                   , needWeight = needs0
+                                   , discount = 0.9
+                                   , hedonicW = 0.1
+                                   , gapPenalty = 0.1
+                                   , timeBudget = 5
+                                   }
+             agent0 = Agent { agentId = 1, needs = needs0, money = 10, params = params0 }
+         case ( World.mkWorld env prices 1
+              , spendVec (replicate Config.needsDimension 0.1)
+              ) of
+           (Right world, Right spendVec0) ->
+             let decision = Decision { timeAllocation = alloc, spendPlan = baseSpend { goodsSpend = spendVec0 } }
+             in case Simulation.stepWorld world [agent0] [decision] of
+                  Right batch ->
+                    if length (Simulation.agentOutcomes batch) == 1
+                       then report True "stepWorld processes agents"
+                       else report False "stepWorld outcome size mismatch"
+                  Left err -> report False ("stepWorld failed " <> show err)
+           _ -> report False "World or spend setup failed"
+       _ -> report False "stepWorld preconditions failed"
