@@ -38,7 +38,7 @@ license-file:       LICENSE
 author:             Habbler
 
 -- An email address to which users can send suggestions, bug reports, and patches.
-maintainer:         habbler@online.de
+maintainer:         10271491+habbler@users.noreply.github.com
 
 -- A copyright notice.
 -- copyright:
@@ -58,17 +58,18 @@ library
     -- Import common warning flags.
     import:           warnings
 
-    -- Modules exported by the library.
-    exposed-modules:  MyLib
-
-    -- Modules included in this library but not exported.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
+    exposed-modules:
+        Core.Config,
+        Core.Dynamics,
+        Core.Error,
+        Core.Matrix,
+        Core.Tensor,
+        Core.Types,
+        Core.World
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.19.2.0
+    build-depends:
+        base >=4.19.2.0 && <4.22
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -91,7 +92,7 @@ executable model-consumer
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.19.2.0,
+        base >=4.19.2.0 && <4.22,
         model-consumer
 
     -- Directories containing source files.
@@ -111,7 +112,9 @@ test-suite model-consumer-test
     -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
+    other-extensions:
+        ImportQualifiedPost,
+        LambdaCase
 
     -- The interface type and version of the test suite.
     type:             exitcode-stdio-1.0
@@ -124,5 +127,5 @@ test-suite model-consumer-test
 
     -- Test dependencies.
     build-depends:
-        base ^>=4.19.2.0,
+        base >=4.19.2.0 && <4.22,
         model-consumer
