@@ -21,6 +21,7 @@
 - Document every module and public function with Haddock comments (`-- |`), describing intent, inputs, and return values.
 - Prefer pattern matching + total functions; add concise comments only where intent is non-obvious.
 - Documentation comments: prefer GHC-style `Note [Stable Id]` blocks (with unique, stable identifiers) and point from source comments to related requirements, specs, or design docs.
+- Escalate sandbox or permission errors to the project owner immediately; do not attempt environment workarounds without approval.
 
 ## Testing Guidelines
 - Use `hspec` for unit and property tests; integrate `hedgehog` for stochastic behaviors (e.g., `validTime`).
